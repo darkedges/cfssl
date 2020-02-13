@@ -378,7 +378,7 @@ func ParsePrivateKeyPEMWithPassword(keyPEM []byte, password []byte) (key crypto.
 
 // GetKeyDERFromPEM parses a PEM-encoded private key and returns DER-format key bytes.
 func GetKeyDERFromPEM(in []byte, password []byte) ([]byte, error) {
-	keyDER, _ := pem.Decode(in)
+	keyDER, _ := OpenSSLCompatDecode(in)
 	if keyDER != nil {
 		if procType, ok := keyDER.Headers["Proc-Type"]; ok {
 			if strings.Contains(procType, "ENCRYPTED") {
@@ -392,6 +392,18 @@ func GetKeyDERFromPEM(in []byte, password []byte) ([]byte, error) {
 	}
 
 	return nil, cferr.New(cferr.PrivateKeyError, cferr.DecodeFailed)
+}
+
+// OpenSSLCompatDecode removes EC Parameters if present.
+func OpenSSLCompatDecode(in []byte) (priv *pem.Block, rest []byte){
+	var keyDER *pem.Block
+	for {
+		keyDER, in = pem.Decode(in)
+		if keyDER == nil || keyDER.Type != "EC PARAMETERS" {
+		break
+		}
+	}
+	return keyDER, in
 }
 
 // ParseCSR parses a PEM- or DER-encoded PKCS #10 certificate signing request.
